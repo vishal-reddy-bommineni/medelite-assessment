@@ -6,6 +6,8 @@ Enhanced UI + simple proven PDF format.
 import streamlit as st
 import requests
 import datetime
+from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 
 st.set_page_config(
     page_title="INFINITE - Facility Assessment",
@@ -301,8 +303,6 @@ def compute_risk(facility: dict, metrics: list):
 
 def generate_pdf(facility: dict, manual: dict, metrics: list, ccn: str,
                  risk_label: str, risk_summary: str, analyst_note: str) -> bytes:
-    from fpdf import FPDF
-    from fpdf.enums import XPos, YPos
 
     NAVY  = (27,42,74);   TEAL  = (0,169,157);   LTEAL = (230,247,246)
     WHITE = (255,255,255); LGRAY = (247,248,250);  DGRAY = (85,85,85)
