@@ -2,7 +2,7 @@
 
 A Streamlit web application that allows MedElite Directors to instantly generate a polished Facility Assessment PDF for any skilled nursing facility using a single CMS Certification Number (CCN).
 
-**[Live Demo →](https://your-app-url.streamlit.app)**
+**[Live Demo →](https://medelite-facility-assessment-report-generator.streamlit.app/)**
 
 ---
 
