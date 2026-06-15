@@ -1,6 +1,5 @@
 """
 MedElite - Facility Assessment Report Generator
-Enhanced UI + simple proven PDF format.
 """
 
 import streamlit as st
@@ -72,9 +71,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CONSTANTS
-# ─────────────────────────────────────────────────────────────────────────────
+# ── CMS API endpoints and field names ─────────────────────────────────────────
 
 CMS_BASE     = "https://data.cms.gov/provider-data/api/1/datastore/query"
 DS_PROVIDER  = "4pq5-n9py"
@@ -105,9 +102,7 @@ F_MEASURE_CODE = "measure_code"
 F_ADJ_SCORE    = "adjusted_score"
 F_OBS_SCORE    = "observed_score"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CMS API
-# ─────────────────────────────────────────────────────────────────────────────
+# ── CMS API ───────────────────────────────────────────────────────────────────
 
 def cms_query(dataset_id: str, field: str, value: str, limit: int = 50) -> list:
     url = (
@@ -154,9 +149,7 @@ def fetch_nat_avg() -> dict | None:
     return None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def safe_float(v) -> float | None:
     try:
@@ -199,11 +192,7 @@ def star_bg(n: int) -> str:
             4:"#16A34A",5:"#15803D"}.get(n, "#94A3B8")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# METRICS
-# STR scores stored as percentages already (e.g. 25.6 = 25.6%) - no multiply
-# LT scores are rates per 1000 resident days - display as float
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Quality metrics ───────────────────────────────────────────────────────────
 
 def build_metrics(claims: list, state_avg: dict | None, nat_avg: dict | None) -> list:
     if not claims:
@@ -248,9 +237,7 @@ def build_metrics(claims: list, state_avg: dict | None, nat_avg: dict | None) ->
     return out
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# RISK SCORING
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Risk scoring ──────────────────────────────────────────────────────────────
 
 def compute_risk(facility: dict, metrics: list):
     score = 0
@@ -264,7 +251,7 @@ def compute_risk(facility: dict, metrics: list):
     elif health   is not None and health   <= 3: score += 1
     if staffing is not None and staffing <= 2: score += 1
 
-    worse  = sum(1 for m in metrics if m["is_worse"] is True)
+    worse = sum(1 for m in metrics if m["is_worse"] is True)
     better = sum(1 for m in metrics if m["is_worse"] is False)
     score += worse
 
@@ -297,9 +284,7 @@ def compute_risk(facility: dict, metrics: list):
     return level, label, summary
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PDF  — simple proven format from working version, ASCII-safe
-# ─────────────────────────────────────────────────────────────────────────────
+# ── PDF generation ────────────────────────────────────────────────────────────
 
 def generate_pdf(facility: dict, manual: dict, metrics: list, ccn: str,
                  risk_label: str, risk_summary: str, analyst_note: str) -> bytes:
@@ -326,7 +311,6 @@ def generate_pdf(facility: dict, manual: dict, metrics: list, ccn: str,
     pdf.set_margins(10, 10, 10)
     pdf.set_auto_page_break(auto=True, margin=22)
 
-    # Header banner
     pdf.set_fill_color(*NAVY); pdf.rect(0, 0, 210, 34, "F")
     pdf.set_font("Helvetica","B",18); pdf.set_text_color(*TEAL)
     pdf.set_xy(10,5); pdf.cell(0,8,"INFINITE",new_x=XPos.LMARGIN,new_y=YPos.NEXT)
@@ -365,7 +349,6 @@ def generate_pdf(facility: dict, manual: dict, metrics: list, ccn: str,
         pdf.cell(0,7,f"  ({stars}/5)",border="B",fill=True,
                  new_x=XPos.LMARGIN,new_y=YPos.NEXT)
 
-    # Risk summary
     shdr("Risk Assessment")
     pdf.set_fill_color(*LTEAL)
     pdf.set_draw_color(*TEAL); pdf.set_line_width(0.4)
@@ -378,7 +361,6 @@ def generate_pdf(facility: dict, manual: dict, metrics: list, ccn: str,
                    new_x=XPos.LMARGIN,new_y=YPos.NEXT)
     pdf.ln(4)
 
-    # Facility information
     shdr("Facility Information")
     for i,(lbl,val) in enumerate([
         ("Name of Facility",                            display_name),
@@ -394,7 +376,6 @@ def generate_pdf(facility: dict, manual: dict, metrics: list, ccn: str,
         irow(lbl, val, shade=i%2==1)
     pdf.ln(4)
 
-    # Star ratings
     shdr("Star Ratings  (CMS Five-Star System)")
     for i,(lbl,key) in enumerate([
         ("Overall Star Rating",      F_OVERALL),
@@ -407,7 +388,6 @@ def generate_pdf(facility: dict, manual: dict, metrics: list, ccn: str,
         srow(lbl, n, shade=i%2==1)
     pdf.ln(4)
 
-    # Hospitalization metrics
     if metrics:
         shdr("Hospitalization & ED Metrics  (CMS Claims-Based)")
         pdf.set_fill_color(*NAVY); pdf.set_text_color(*WHITE); pdf.set_font("Helvetica","B",8)
@@ -435,14 +415,12 @@ def generate_pdf(facility: dict, manual: dict, metrics: list, ccn: str,
             pdf.set_text_color(34,34,34); pdf.set_fill_color(*(LGRAY if s else WHITE)); pdf.ln()
         pdf.ln(4)
 
-    # Analyst note
     if note.strip():
         shdr("Assessment Notes")
         pdf.set_font("Helvetica","",8); pdf.set_text_color(55,65,81)
         pdf.multi_cell(0,5,f"  {note}",new_x=XPos.LMARGIN,new_y=YPos.NEXT)
         pdf.ln(2)
 
-    # Footer
     pdf.set_font("Helvetica","",7.5); pdf.set_text_color(0,169,157)
     pdf.cell(0,6,f"Medicare Source: {med_url}",link=med_url,
              new_x=XPos.LMARGIN,new_y=YPos.NEXT)
@@ -455,9 +433,7 @@ def generate_pdf(facility: dict, manual: dict, metrics: list, ccn: str,
     return bytes(pdf.output())
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STREAMLIT UI
-# ─────────────────────────────────────────────────────────────────────────────
+# ── UI ────────────────────────────────────────────────────────────────────────
 
 st.markdown(
     '<div class="brand-banner">'
@@ -528,7 +504,6 @@ if facility:
     risk_level, risk_label, risk_summary = compute_risk(facility, metrics)
     risk_cls = f"risk-{risk_level}"
 
-    # Facility header card — single concatenated string (no multiline HTML)
     circles = ""
     for k in ["overall","health","staffing","qm"]:
         n   = int(stars[k]) if stars[k] is not None else 0
@@ -538,7 +513,6 @@ if facility:
                     f'<div class="star-label">{star_labels[k]}</div>'
                     f'</div>')
 
-    prev_badge = ""
     card = (
         '<div class="fac-card">'
         '<div class="fac-toprow">'
@@ -587,7 +561,6 @@ if facility:
     st.divider()
     st.markdown("#### Report Preview")
 
-    # Facility info table
     st.markdown('<div class="section-label">Facility Information</div>', unsafe_allow_html=True)
     irows = ""
     for i,(lbl,val) in enumerate([
@@ -607,7 +580,6 @@ if facility:
                   f'<span class="ival">{val}</span></div>')
     st.markdown(irows, unsafe_allow_html=True)
 
-    # Star ratings with dynamic color
     st.markdown('<div class="section-label">Star Ratings</div>', unsafe_allow_html=True)
     srows = ""
     for i,(lbl,key) in enumerate([
@@ -630,7 +602,6 @@ if facility:
         )
     st.markdown(srows, unsafe_allow_html=True)
 
-    # Benchmark bars
     if metrics:
         st.markdown('<div class="section-label">Hospitalization & ED Metrics</div>',
                     unsafe_allow_html=True)
